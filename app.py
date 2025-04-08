@@ -4,7 +4,8 @@ import re
 from fpdf import FPDF
 import base64
 import matplotlib.pyplot as plt
-from openai import OpenAI, OpenAIError
+import openai
+from openai import OpenAIError
 
 # Load API key
 openai_api_key = os.getenv("OPENAI_API_KEY")
