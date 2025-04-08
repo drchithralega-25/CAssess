@@ -109,8 +109,15 @@ if submitted:
         st.markdown("### 🧠 AI-Based Assessment")
         st.write(analysis)
 
-        st.markdown("### ⭐ Summary Score")
-        st.markdown(f"**{percentage_score}%** overall based on self-assessed skills")
+        st.markdown("### ⭐ Summary")
+        if percentage_score >= 75:
+            summary = f"{name} has a strong overall score of {percentage_score}%, indicating a good fit for the B.Com (CA) program."
+        elif 60 <= percentage_score < 75:
+            summary = f"{name} has a moderate score of {percentage_score}%. B.Com (CA) could be suitable with additional guidance, but exploring related fields like BBA or BSc (CS) might also be beneficial."
+        else:
+            summary = f"{name} scored {percentage_score}%, which suggests B.Com (CA) may not be the best fit. Alternatives such as BBA, BA, or BSc could align better with their strengths."
+
+        st.markdown(summary)
 
         # ------------------ Chart ------------------
         scores = {
@@ -149,6 +156,7 @@ if submitted:
             pdf.cell(200, 10, txt=f"{skill}: {score}/10", ln=True)
 
         pdf.cell(200, 10, txt=f"Summary Score: {percentage_score}%", ln=True)
+        pdf.multi_cell(200, 10, txt=f"Summary: {summary}")
 
         pdf.ln(5)
         pdf.cell(200, 10, txt="Written Responses:", ln=True)
