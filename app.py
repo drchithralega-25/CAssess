@@ -1,81 +1,88 @@
-
 import streamlit as st
-import openai
 import os
+import re
 from fpdf import FPDF
 import base64
+import matplotlib.pyplot as plt
+from openai import OpenAI, OpenAIError
 
-# Load API key from Streamlit secrets
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Load API key
+openai_api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=openai_api_key)
 
-st.set_page_config(page_title="B.COM CAssess", layout="centered")
-
-# --- Styling ---
-st.markdown("""
-    <style>
-    body {
-        background-color: #f2f4f8;
-    }
-    .main {
-        background-color: white;
-        padding: 2rem;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    h1, h2, h3 {
-        color: #003366;
-    }
-    .stButton>button {
-        background-color: #3366cc;
-        color: white;
-        font-weight: bold;
-    }
-    </style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="B.Com CA Admission Evaluator", layout="centered")
 
 st.title("🎓 B.Com (CA) Student Fit & Assessment Tool")
-st.markdown("""
-This tool analyzes student responses to evaluate their **strengths**, **weaknesses**, and **fit for B.Com (CA)**. 
-If not suitable, it suggests an alternative stream that might better match their interests and skills.
-""")
+st.markdown("This tool evaluates student responses, gives a detailed report, and shows a bar chart of key strengths.")
 
-# --- Student Input Form ---
+# --- Student Form ---
 with st.form("student_form"):
     name = st.text_input("👤 Student Name")
-    q1 = st.text_area("1️⃣ Why have you chosen to apply for the B.Com (CA) program?")
-    q2 = st.text_area("2️⃣ What subjects did you enjoy the most in your higher secondary studies, and why?")
-    q3 = st.text_area("3️⃣ Describe a time you had difficulty understanding a concept. How did you overcome it?")
-    q4 = st.text_area("4️⃣ What is your level of comfort with using computers and technology in academics?")
-    q5 = st.text_area("5️⃣ What kind of career or job role are you interested in after completing B.Com (CA)?")
-    submitted = st.form_submit_button("🔍 Evaluate Student")
+    q1 = st.text_area("1️⃣ Why have you chosen B.Com (CA)?")
+    q2 = st.text_area("2️⃣ Favorite subjects and why?")
+    q3 = st.text_area("3️⃣ Describe a time you had difficulty understanding a concept.")
+    q4 = st.text_area("4️⃣ Your comfort level with technology?")
+    q5 = st.text_area("5️⃣ Career goals after B.Com (CA)?")
+    submitted = st.form_submit_button("🔍 Evaluate")
 
-# --- AI Evaluation Logic ---
-def analyze_student_fit(name, answers):
-    prompt = f"""
-    You are an expert admission advisor. A student named {name} has provided the following answers while applying to a B.Com (Computer Applications) program:
+# --- AI Evaluation Prompt ---
+def generate_prompt(name, answers):
+    return f"""
+A student named {name} has applied for B.Com (CA). Analyze their answers and return:
 
-    1. Why B.Com (CA)?\n{answers[0]}
-    2. Favorite subjects?\n{answers[1]}
-    3. Academic challenge?\n{answers[2]}
-    4. Tech comfort level?\n{answers[3]}
-    5. Career interest?\n{answers[4]}
+1. A detailed evaluation report including:
+   - Strengths
+   - Weaknesses
+   - Fit for B.Com (CA)
+   - Suggest a better stream if not fit
 
-    Please analyze the student's:
-    - Strengths
-    - Weaknesses
-    - Fit for B.Com (CA)
-    - If not fit, suggest a better department (e.g., BBA, B.Sc, BA, etc.) and why.
-    Provide a detailed evaluation in a friendly and insightful tone.
-    """
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return response['choices'][0]['message']['content']
+2. A score (out of 10) for the following:
+   [Scores]
+   - Subject Interest:
+   - Tech Comfort:
+   - Communication:
+   - Adaptability:
+   - B.Com(CA) Fit:
 
-# --- PDF Generation ---
+Answers:
+1. {answers[0]}
+2. {answers[1]}
+3. {answers[2]}
+4. {answers[3]}
+5. {answers[4]}
+"""
+
+# --- Extract Scores from AI Response ---
+def extract_scores(text):
+    try:
+        pattern = r"(?i)subject interest:\s*(\d+).*?tech comfort:\s*(\d+).*?communication:\s*(\d+).*?adaptability:\s*(\d+).*?b\.?com\(ca\)? fit:\s*(\d+)"
+        match = re.search(pattern, text, re.DOTALL)
+        if match:
+            return {
+                "Subject Interest": int(match.group(1)),
+                "Tech Comfort": int(match.group(2)),
+                "Communication": int(match.group(3)),
+                "Adaptability": int(match.group(4)),
+                "B.Com(CA) Fit": int(match.group(5))
+            }
+    except Exception:
+        pass
+    return None
+
+# --- AI Call ---
+def analyze_student(name, answers):
+    prompt = generate_prompt(name, answers)
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content
+    except OpenAIError as e:
+        st.error(f"OpenAI Error: {e}")
+        return None
+
+# --- PDF Generator ---
 def generate_pdf(student_name, report_text):
     pdf = FPDF()
     pdf.add_page()
@@ -87,18 +94,46 @@ def generate_pdf(student_name, report_text):
         pdf.multi_cell(0, 10, line)
     return pdf.output(dest='S').encode('latin-1')
 
-if submitted:
-    st.subheader("📊 AI-Powered Student Evaluation Report")
-    with st.spinner("Analyzing student responses..."):
-        report = analyze_student_fit(name, [q1, q2, q3, q4, q5])
-        st.success("Evaluation complete!")
-        st.markdown(f"""
-        ### 🧾 Report for {name}
-        {report}
-        """)
+# --- Plot Chart ---
+def plot_scores(score_dict):
+    fig, ax = plt.subplots()
+    categories = list(score_dict.keys())
+    scores = list(score_dict.values())
+    colors = ['#4c72b0', '#55a868', '#c44e52', '#8172b2', '#ccb974']
+    ax.barh(categories, scores, color=colors)
+    ax.set_xlim(0, 10)
+    ax.set_xlabel("Score (out of 10)")
+    ax.set_title("Student Evaluation Chart")
+    st.pyplot(fig)
 
-        # Generate PDF
-        pdf_bytes = generate_pdf(name, report)
-        b64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-        href = f'<a href="data:application/octet-stream;base64,{b64_pdf}" download="{name}_Evaluation_Report.pdf">📥 Download PDF Report</a>'
-        st.markdown(href, unsafe_allow_html=True)
+# --- Final Evaluation ---
+if submitted:
+    if not name or not all([q1, q2, q3, q4, q5]):
+        st.warning("⚠️ Please fill in all fields.")
+    else:
+        st.subheader("📊 Evaluation in Progress")
+        with st.spinner("Analyzing responses..."):
+            answers = [q1, q2, q3, q4, q5]
+            result = analyze_student(name, answers)
+
+            if result:
+                st.success("✅ Evaluation Complete")
+                
+                # Extract and show report
+                report_text = result.strip()
+                st.markdown(f"### 🧾 Report for {name}")
+                st.markdown(report_text)
+
+                # Extract and plot scores
+                scores = extract_scores(report_text)
+                if scores:
+                    st.markdown("### 📈 Evaluation Summary")
+                    plot_scores(scores)
+                else:
+                    st.warning("⚠️ Could not extract scores from the AI response.")
+
+                # Download PDF
+                pdf_bytes = generate_pdf(name, report_text)
+                b64 = base64.b64encode(pdf_bytes).decode()
+                href = f'<a href="data:application/octet-stream;base64,{b64}" download="{name}_Report.pdf">📥 Download PDF Report</a>'
+                st.markdown(href, unsafe_allow_html=True)
