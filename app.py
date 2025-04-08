@@ -9,7 +9,7 @@ from io import BytesIO
 st.set_page_config(page_title="B.COM CAssess", layout="centered")
 
 # --- Function to generate PDF report ---
-def generate_pdf_report(name: str, gender: str, responses: Dict[str, str], analysis: str, recommendation: str, score: int):
+def generate_pdf_report(name: str, gender: str, responses: Dict[str, str], analysis: str, recommendation: str, score: int, traits: Dict[str, int]):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
@@ -26,6 +26,11 @@ def generate_pdf_report(name: str, gender: str, responses: Dict[str, str], analy
         pdf.ln(1)
 
     pdf.ln(5)
+    pdf.cell(200, 10, txt="Personal Traits (0-10):", ln=True)
+    for trait, val in traits.items():
+        pdf.cell(200, 10, txt=f"{trait}: {val}/10", ln=True)
+
+    pdf.ln(5)
     pdf.multi_cell(0, 10, txt="Evaluation Summary:")
     pdf.multi_cell(0, 10, txt=analysis)
     pdf.ln(2)
@@ -33,7 +38,7 @@ def generate_pdf_report(name: str, gender: str, responses: Dict[str, str], analy
     pdf.multi_cell(0, 10, txt=f"Score to fit in BCom (CA): {score}%")
 
     buffer = BytesIO()
-    pdf.output(buffer)
+    pdf.output(buffer, dest='S').encode('latin1')
     buffer.seek(0)
     b64 = base64.b64encode(buffer.read()).decode()
     href = f'<a href="data:application/octet-stream;base64,{b64}" download="student_evaluation_report.pdf">Download PDF Report</a>'
@@ -62,6 +67,13 @@ with st.form("student_form"):
     q4 = st.text_area("4. How comfortable are you with accounting and numbers?")
     q5 = st.text_area("5. What are your hobbies or extracurricular interests?")
 
+    st.markdown("#### Rate your qualities (0 - Poor, 10 - Excellent)")
+    communication = st.slider("Communication Skills", 0, 10, 5)
+    problem_solving = st.slider("Problem Solving Skills", 0, 10, 5)
+    teamwork = st.slider("Teamwork & Collaboration", 0, 10, 5)
+    leadership = st.slider("Leadership", 0, 10, 5)
+    tech_comfort = st.slider("Tech Comfort Level", 0, 10, 5)
+
     submitted = st.form_submit_button("Evaluate")
 
 if submitted:
@@ -73,6 +85,14 @@ if submitted:
         "Hobbies": q5
     }
 
+    traits = {
+        "Communication Skills": communication,
+        "Problem Solving": problem_solving,
+        "Teamwork": teamwork,
+        "Leadership": leadership,
+        "Tech Comfort": tech_comfort
+    }
+
     # Basic rule-based analysis
     score = 0
     if "account" in q1.lower() or "computer" in q1.lower(): score += 20
@@ -80,6 +100,9 @@ if submitted:
     if any(s in q3.lower() for s in ["good", "excellent", "proficient"]): score += 20
     if any(s in q4.lower() for s in ["very", "comfortable", "easy"]): score += 20
     if any(h in q5.lower() for h in ["coding", "chess", "finance", "typing"]): score += 20
+
+    avg_traits = sum(traits.values()) / len(traits)
+    score = min(score + int(avg_traits * 2), 100)
 
     # Result Summary
     if score >= 80:
@@ -105,10 +128,10 @@ Recommended Stream: {stream_suggestion}
     st.markdown("### Summary:")
     st.markdown(summary.replace("\n", "\n\n"))
 
-    recommendation_text = f"Based on the provided responses, {name} shows a {fit.lower()}. The responses suggest the most aligned stream would be {stream_suggestion}. This is a recommendation and can be discussed further with academic counselors."
+    recommendation_text = f"Based on the student's answers and rated qualities, {name} exhibits a {fit.lower()} The overall score of {score}% reflects their academic and personality alignment with the B.Com (CA) program. If not B.Com (CA), {stream_suggestion} would be more suitable."
 
     # Generate and offer PDF download
-    pdf_link = generate_pdf_report(name, gender, responses, fit, recommendation_text, score)
+    pdf_link = generate_pdf_report(name, gender, responses, fit, recommendation_text, score, traits)
     st.markdown(pdf_link, unsafe_allow_html=True)
 
     # Chart for visual feedback
