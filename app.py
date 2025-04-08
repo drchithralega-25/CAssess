@@ -1,6 +1,5 @@
 import streamlit as st
 import matplotlib.pyplot as plt
-import seaborn as sns
 import tempfile
 from fpdf import FPDF
 import base64
