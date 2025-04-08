@@ -7,33 +7,28 @@ import matplotlib.pyplot as plt
 import openai
 from openai import OpenAIError
 
-# Load API key
-openai_api_key = os.getenv("OPENAI_API_KEY")
-openai.api_key = openai_api_key
+st.set_page_config(page_title="B.Com CA Admission Evaluator", layout="centered")
 
-# Set background image
-def set_bg_from_url():
-    page_bg_img = f'''
+# Set simple white pearl background style
+def set_white_pearl_bg():
+    style = """
     <style>
-    .stApp {{
-        background-image: url("https://images.unsplash.com/photo-1571260899304-425eee4c7efc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
+    .stApp {
+        background-color: #fdfdfd;
+        background-image: linear-gradient(145deg, #ffffff, #f4f4f4);
         background-attachment: fixed;
-    }}
-    .stMarkdown, .stTextInput, .stTextArea, .stButton, .stForm {{
-        background-color: rgba(255, 255, 255, 0.85);
+        padding: 20px;
+    }
+    .stMarkdown, .stTextInput, .stTextArea, .stButton, .stForm {
+        background-color: rgba(255, 255, 255, 0.9);
         border-radius: 10px;
         padding: 10px;
-    }}
+    }
     </style>
-    '''
-    st.markdown(page_bg_img, unsafe_allow_html=True)
+    """
+    st.markdown(style, unsafe_allow_html=True)
 
-set_bg_from_url()
-
-st.set_page_config(page_title="B.Com CA Admission Evaluator", layout="centered")
+set_white_pearl_bg()
 
 st.title("🎓 B.Com (CA) Student Fit & Assessment Tool")
 st.markdown("This tool evaluates student responses, gives a detailed report, and shows a bar chart of key strengths.")
