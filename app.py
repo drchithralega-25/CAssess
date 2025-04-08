@@ -9,7 +9,29 @@ from openai import OpenAIError
 
 # Load API key
 openai_api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=openai_api_key)
+openai.api_key = openai_api_key
+
+# Set background image
+def set_bg_from_url():
+    page_bg_img = f'''
+    <style>
+    .stApp {{
+        background-image: url("https://images.unsplash.com/photo-1571260899304-425eee4c7efc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    .stMarkdown, .stTextInput, .stTextArea, .stButton, .stForm {{
+        background-color: rgba(255, 255, 255, 0.85);
+        border-radius: 10px;
+        padding: 10px;
+    }}
+    </style>
+    '''
+    st.markdown(page_bg_img, unsafe_allow_html=True)
+
+set_bg_from_url()
 
 st.set_page_config(page_title="B.Com CA Admission Evaluator", layout="centered")
 
@@ -74,7 +96,7 @@ def extract_scores(text):
 def analyze_student(name, answers):
     prompt = generate_prompt(name, answers)
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
@@ -119,7 +141,7 @@ if submitted:
 
             if result:
                 st.success("✅ Evaluation Complete")
-                
+
                 # Extract and show report
                 report_text = result.strip()
                 st.markdown(f"### 🧾 Report for {name}")
