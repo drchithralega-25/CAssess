@@ -8,7 +8,7 @@ import base64
 # Load API key from Streamlit secrets
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-st.set_page_config(page_title="B.Com CA Admission Evaluator", layout="centered")
+st.set_page_config(page_title="B.COM CAssess", layout="centered")
 
 # --- Styling ---
 st.markdown("""
