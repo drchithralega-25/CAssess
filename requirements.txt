@@ -2,4 +2,3 @@ streamlit
 openai==0.28
 matplotlib
 fpdf
-seaborn
