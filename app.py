@@ -81,7 +81,11 @@ questions = {
     "Collaboration in Team Settings": None,
     "Handling Complex Problems / Troubleshooting": None,
     "Creativity in Tech/Design Solutions": None,
-    "Flexibility to Learn New Tech Quickly": None
+    "Flexibility to Learn New Tech Quickly": None,
+    "Interest in Accounting / Bookkeeping": None,
+    "Understanding of Commerce Terminology (e.g. assets, liabilities)": None,
+    "Awareness of Current Business Trends": None,
+    "Ability to Interpret Financial Statements": None
 }
 
 for q in questions:
