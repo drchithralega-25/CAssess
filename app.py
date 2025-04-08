@@ -1,105 +1,106 @@
 import streamlit as st
-import matplotlib.pyplot as plt
-import tempfile
+import base64
 from fpdf import FPDF
-import random
-import os
+from io import BytesIO
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 st.set_page_config(page_title="B.COM CAssess", layout="centered")
-st.markdown("""
-    <style>
-        body {
-            background-color: #fefefe;
-        }
-    </style>
-""", unsafe_allow_html=True)
 
-def analyze_responses(responses):
-    traits = {
-        "Analytical Thinking": responses[0],
-        "Communication Skills": responses[1],
-        "Tech Comfort": responses[2],
-        "Business Acumen": responses[3],
-        "Teamwork": responses[4],
-        "Interest in Programming": responses[5]
-    }
-    strengths = [k for k, v in traits.items() if v >= 7]
-    weaknesses = [k for k, v in traits.items() if v <= 4]
+# Set background using base64 encoded image of light blue sky with white clouds
+cloud_bg = """
+<style>
+.stApp {
+    background-image: url("https://i.ibb.co/qxnWx6X/cloud-bg.jpg");
+    background-size: cover;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+}
+</style>
+"""
+st.markdown(cloud_bg, unsafe_allow_html=True)
 
-    score = sum(responses) / len(responses)
-    fit = score >= 6.5
+# App Title
+st.markdown("<h1 style='text-align: center; color: #0B3D91;'>B.COM CAssess</h1>", unsafe_allow_html=True)
 
-    if fit:
-        recommendation_text = "You are a strong fit for B.Com (CA). Your skills and interests align well with the demands of the course."
-    elif 5 <= score < 6.5:
-        recommendation_text = "You can still consider B.Com (CA), but you may find better growth in courses like BBA or BSc Computer Science."
-    else:
-        recommendation_text = "You can shine brighter in fields such as BBA, BA (English), or BSc Psychology, based on your strengths."
+# Sample slider-based questionnaire
+st.subheader("B.COM CAssess")
+name = st.text_input("Name")
+gender = st.selectbox("Gender", ["Male", "Female", "Other"])
 
-    return strengths, weaknesses, fit, recommendation_text, round(score * 10, 2), traits
+communication = st.slider("Rate your communication skills", 0, 10, 5)
+logical_reasoning = st.slider("Rate your logical thinking ability", 0, 10, 5)
+interest_commerce = st.slider("Interest in commerce and accounting", 0, 10, 5)
+tech_comfort = st.slider("Comfort with using computers and technology", 0, 10, 5)
+creativity = st.slider("Creativity & Innovation", 0, 10, 5)
 
-def generate_pdf_report(name, gender, responses, fit, recommendation_text, score, traits):
+responses = {
+    "Communication": communication,
+    "Logical Reasoning": logical_reasoning,
+    "Interest in Commerce": interest_commerce,
+    "Tech Comfort": tech_comfort,
+    "Creativity": creativity
+}
+
+# Analyze score
+score = sum(responses.values())
+percentage = round((score / 50) * 100, 2)
+fit = "Yes" if percentage >= 70 else "No"
+
+# Generate recommendation
+if percentage >= 70:
+    recommendation_text = f"{name} appears to be a good fit for B.Com (CA). Their skills and interests align well with the curriculum and future career opportunities."
+elif 50 <= percentage < 70:
+    recommendation_text = f"{name} may find B.Com (CA) a bit challenging but manageable. However, they might shine more in courses like BBA or BCom General."
+else:
+    recommendation_text = f"{name} has potential but may be better suited for streams like BA, BBA, or BSc based on their interests and skill ratings."
+
+# Display summary
+st.subheader("Summary Report")
+st.markdown(f"**Name:** {name}")
+st.markdown(f"**Gender:** {gender}")
+st.markdown(f"**Fit for B.Com (CA):** {fit}")
+st.markdown(f"**Score:** {score}/50")
+st.markdown(f"**Fit Percentage:** {percentage}%")
+st.markdown(f"**Recommendation:** {recommendation_text}")
+
+# Visual chart
+st.subheader("Visual Analysis")
+fig, ax = plt.subplots()
+sns.barplot(x=list(responses.keys()), y=list(responses.values()), palette="Blues_d", ax=ax)
+ax.set_ylim(0, 10)
+ax.set_title("Skill Ratings")
+st.pyplot(fig)
+
+# PDF report generation
+def generate_pdf_report(name, gender, responses, fit, recommendation_text, score, percentage):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-
-    pdf.cell(200, 10, txt=f"Student Assessment Report", ln=True, align='C')
+    pdf.cell(200, 10, txt="B.COM CAssess - Evaluation Report", ln=True, align='C')
     pdf.ln(10)
     pdf.cell(200, 10, txt=f"Name: {name}", ln=True)
     pdf.cell(200, 10, txt=f"Gender: {gender}", ln=True)
-    pdf.ln(10)
-    pdf.multi_cell(200, 10, txt=f"Scores:")
-    for key, value in traits.items():
-        pdf.cell(200, 10, txt=f"{key}: {value}/10", ln=True)
-
     pdf.ln(5)
-    pdf.cell(200, 10, txt=f"Overall Fit Score: {score}%", ln=True)
+    pdf.cell(200, 10, txt="Ratings:", ln=True)
+    for trait, value in responses.items():
+        pdf.cell(200, 10, txt=f"{trait}: {value}/10", ln=True)
     pdf.ln(5)
-    pdf.multi_cell(200, 10, txt=f"Recommendation: {recommendation_text}")
+    pdf.cell(200, 10, txt=f"Score: {score}/50", ln=True)
+    pdf.cell(200, 10, txt=f"Fit Percentage: {percentage}%", ln=True)
+    pdf.cell(200, 10, txt=f"Fit for B.Com (CA): {fit}", ln=True)
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, txt=f"Recommendation: {recommendation_text}")
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        pdf.output(tmp.name)
-        return tmp.name
+    buffer = BytesIO()
+    pdf.output(buffer)
+    return buffer
 
-st.title("B.COM (CA) Admission Strength Analyzer")
-st.markdown("### Enter Student Details")
-
-name = st.text_input("Student Name")
-gender = st.selectbox("Gender", ["Boy", "Girl", "Prefer not to say"])
-
-st.markdown("### Rate the following from 0 (Poor) to 10 (Excellent)")
-q1 = st.slider("1. Problem Solving / Analytical Thinking", 0, 10, 5)
-q2 = st.slider("2. Communication Skills", 0, 10, 5)
-q3 = st.slider("3. Comfort with Technology", 0, 10, 5)
-q4 = st.slider("4. Interest in Business Studies", 0, 10, 5)
-q5 = st.slider("5. Team Collaboration / Leadership", 0, 10, 5)
-q6 = st.slider("6. Interest in Programming / Coding", 0, 10, 5)
-
-responses = [q1, q2, q3, q4, q5, q6]
-
-if st.button("Evaluate Student"):
-    strengths, weaknesses, fit, recommendation_text, score, traits = analyze_responses(responses)
-
-    st.subheader("Evaluation Summary")
-    st.markdown(f"**Fit Score**: {score}%")
-
-    st.markdown("---")
-    st.markdown("### Strengths")
-    st.write(", ".join(strengths) if strengths else "No major strengths identified.")
-
-    st.markdown("### Weaknesses")
-    st.write(", ".join(weaknesses) if weaknesses else "No significant weaknesses.")
-
-    st.markdown("### Final Recommendation")
-    st.info(recommendation_text)
-
-    st.markdown("### Fit Score Chart")
-    fig, ax = plt.subplots()
-    ax.barh(list(traits.keys()), list(traits.values()), color="skyblue")
-    ax.set_xlim([0, 10])
-    st.pyplot(fig)
-
-    st.markdown("---")
-    pdf_path = generate_pdf_report(name, gender, responses, fit, recommendation_text, score, traits)
-    with open(pdf_path, "rb") as f:
-        st.download_button("Download PDF Report", f, file_name=f"{name}_BComCA_Report.pdf")
+if st.button("Generate PDF Report"):
+    pdf_buffer = generate_pdf_report(name, gender, responses, fit, recommendation_text, score, percentage)
+    st.download_button(
+        label="Download PDF Report",
+        data=pdf_buffer,
+        file_name=f"{name}_Evaluation_Report.pdf",
+        mime="application/pdf"
+    )
