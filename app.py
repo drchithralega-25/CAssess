@@ -30,12 +30,16 @@ st.markdown(
 )
 
 st.title("📊 B.COM CAssess - Student Admission Evaluator")
-st.write("Fill in the questionnaire to evaluate student's suitability for B.Com (CA)")
+st.write("Answer the questions to evaluate the student's suitability for B.Com (CA)")
 
 # ------------------ Form ------------------
 with st.form("admission_form"):
     name = st.text_input("Student Name")
     age = st.number_input("Age", min_value=15, max_value=30)
+    email = st.text_input("Email ID")
+    phone = st.text_input("Phone Number")
+    school = st.text_input("School Name")
+
     communication = st.slider("Communication Skills", 1, 10)
     interest_commerce = st.slider("Interest in Commerce/Accounting", 1, 10)
     tech_affinity = st.slider("Comfort with Computers/Technology", 1, 10)
@@ -44,6 +48,13 @@ with st.form("admission_form"):
     leadership = st.slider("Leadership/Initiative", 1, 10)
     motivation = st.slider("Motivation & Career Clarity", 1, 10)
     other_interest = st.text_input("Other Subject Interests (e.g., Arts, Science, Business Mgmt)")
+
+    # Additional text-based questions
+    why_commerce = st.text_area("Why are you interested in Commerce/Computer Applications?")
+    future_goal = st.text_area("What is your career goal?")
+    strength_self = st.text_area("What do you think is your biggest strength?")
+    weakness_self = st.text_area("What do you think is your biggest weakness?")
+
     submitted = st.form_submit_button("Evaluate Student")
 
 # ------------------ Processing ------------------
@@ -52,10 +63,16 @@ if submitted:
 
     # Prepare prompt for AI
     prompt = f"""
-    Student Name: {name}
+    A student provided the following responses:
+
+    Name: {name}
     Age: {age}
+    Email: {email}
+    Phone: {phone}
+    School: {school}
+
     Communication Skills: {communication}/10
-    Commerce Interest: {interest_commerce}/10
+    Interest in Commerce: {interest_commerce}/10
     Technology Affinity: {tech_affinity}/10
     Logical Reasoning: {logical_reasoning}/10
     Teamwork: {teamwork}/10
@@ -63,12 +80,18 @@ if submitted:
     Motivation: {motivation}/10
     Other Interests: {other_interest}
 
-    Based on the above, assess the student's:
-    - Strengths
-    - Weaknesses
-    - Fit for B.Com (CA)
-    - Suggest best-fit department if not suitable for B.Com(CA).
-    Provide a short paragraph of recommendation.
+    Written Answers:
+    - Why Commerce/CA: {why_commerce}
+    - Career Goal: {future_goal}
+    - Self Strength: {strength_self}
+    - Self Weakness: {weakness_self}
+
+    Based on the above data, analyze:
+    1. Student's strengths
+    2. Student's weaknesses
+    3. Whether the student is a good fit for B.Com (CA)
+    4. If not suitable for B.Com (CA), suggest the best-suited stream (like BBA, BA, BSc etc.)
+    5. Give a final recommendation in paragraph form.
     """
 
     try:
@@ -77,8 +100,17 @@ if submitted:
             messages=[{"role": "user", "content": prompt}]
         )
         analysis = response.choices[0].message.content
+
+        # ------------------ Summary Score ------------------
+        score_total = communication + interest_commerce + tech_affinity + logical_reasoning + teamwork + leadership + motivation
+        score_out_of = 70
+        percentage_score = round((score_total / score_out_of) * 100, 2)
+
         st.markdown("### 🧠 AI-Based Assessment")
         st.write(analysis)
+
+        st.markdown("### ⭐ Summary Score")
+        st.markdown(f"**{percentage_score}%** overall based on self-assessed skills")
 
         # ------------------ Chart ------------------
         scores = {
@@ -109,11 +141,20 @@ if submitted:
         pdf.ln(10)
         pdf.cell(200, 10, txt=f"Student Name: {name}", ln=True)
         pdf.cell(200, 10, txt=f"Age: {age}", ln=True)
+        pdf.cell(200, 10, txt=f"Email: {email}", ln=True)
+        pdf.cell(200, 10, txt=f"Phone: {phone}", ln=True)
+        pdf.cell(200, 10, txt=f"School: {school}", ln=True)
 
         for skill, score in scores.items():
             pdf.cell(200, 10, txt=f"{skill}: {score}/10", ln=True)
 
-        pdf.ln(10)
+        pdf.cell(200, 10, txt=f"Summary Score: {percentage_score}%", ln=True)
+
+        pdf.ln(5)
+        pdf.cell(200, 10, txt="Written Responses:", ln=True)
+        pdf.multi_cell(200, 10, txt=f"Why BCom(CA): {why_commerce}\nCareer Goal: {future_goal}\nStrength: {strength_self}\nWeakness: {weakness_self}\n")
+
+        pdf.ln(5)
         pdf.multi_cell(200, 10, txt=f"Assessment:\n{analysis}")
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
